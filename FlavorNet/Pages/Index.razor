@@ -1,0 +1,98 @@
+﻿@page "/"
+
+@using FlavorNet.Data;
+@using FlavorNet.Grid;
+@using FlavorNet.Services;
+@using Microsoft.EntityFrameworkCore
+
+@inject IReviewFilters Filters
+@inject IDbContextFactory<FlavorContext> DbFactory
+@inject NavigationManager Navigation
+@inject GridQueryAdapter QueryAdapter
+@inject IConfiguration Configuration
+@inject IFavorDb FavorDb
+
+
+@using FlavorNet.Data
+
+
+<PageTitle>Restaurant Reviews</PageTitle>
+
+<h2>Samsung Future Innovation Lab - Restaurant Reviews</h2>
+
+
+@if (Reviews == null)
+{
+    <p><em>Open AI Magic Happening...</em></p>
+
+    <span class="loader"></span>
+}
+else
+{
+    <button @onclick="RefreshPage">
+        Open AI Magic
+    </button>
+
+   
+
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Sentiment</th>
+                <th>Comment</th>
+                <th>Summary</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var review in Reviews)
+            {
+                <tr>
+                    <td class="@GetRowClass(review.Sentiment)"><b>@review.Reviewer</b></td>
+                    <td class="@GetRowClass(review.Sentiment)">@review.Sentiment</td>
+                    <td class="@GetRowClass(review.Sentiment)">@review.Comment</td>
+                    <td class="@GetRowClass(review.Sentiment)">@review.Summary</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+
+    private ICollection<Review>? Reviews { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        //        Reviews = new List<Review>();
+
+        using var context = DbFactory.CreateDbContext();
+        Reviews = context.Reviews?.OrderBy(x => x.Sentiment).ToList();
+
+              /*      if (query is not null)
+                  {
+                  // run the query to load the current page
+                  Reviews = await QueryAdapter.FetchAsync(query);
+              }*/
+    }
+
+    public string GetRowClass(SentimentEnum? sentiment)
+{
+        return sentiment switch
+        {
+            SentimentEnum.Ok => "neutral-message",
+            SentimentEnum.Bad => "negative-message",
+            SentimentEnum.Great => "positive-message",
+            _ => ""
+        };
+    }
+   
+
+    public async void RefreshPage()
+    {
+        Reviews = null;
+        await FavorDb.UpdateAllSentiment();
+        Navigation.NavigateTo(Navigation.Uri, forceLoad: true);
+    }
+}
+
